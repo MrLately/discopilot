@@ -918,37 +918,6 @@ quectel_require_ecm()
 	return 1
 }
 
-send_message()
-{
-	# delay sending of messages if modem is not yet online
-	for i in $(seq 0 5); do
-		check_connection
-	done
-	if [ $? -ne 0 ]; then
-		ulogger -s -t uavpal_send_message "... Cannot send message (no connection). Exiting send_message function!"
-		exit 1 # exit function
-	fi
-
-	if [ -z "$serial_ctrl_dev" ] && [ -f /tmp/serial_ctrl_dev ]; then
-		serial_ctrl_dev=$(head -1 /tmp/serial_ctrl_dev | tr -d '\r\n' | tr -d '\n')
-	fi
-
-	phone_no="$(conf_read phonenumber)"
-	if [ "$phone_no" != "+XXYYYYYYYYY" ]; then
-		if [ -f "/tmp/hilink_router_ip" ]; then
-			ulogger -s -t uavpal_send_message "... sending SMS to ${phone_no} (via Hi-Link API)"
-			hilink_api "post" "/api/sms/send-sms" "<request><Index>-1</Index><Phones><Phone>${phone_no}</Phone></Phones><Sca></Sca><Content>${1}</Content><Length>-1</Length><Reserved>-1</Reserved><Date>-1</Date></request>"
-		elif [ -n "$serial_ctrl_dev" ] && [ -c "/dev/${serial_ctrl_dev}" ]; then
-			ulogger -s -t uavpal_send_message "... sending SMS to ${phone_no} (via ${serial_ctrl_dev})"
-			at_command "AT+CMGF=1\rAT+CMGS=\"${phone_no}\"\r${1}\32" "OK" "2"
-		else
-			ulogger -s -t uavpal_send_message "... cannot send SMS: no modem serial control interface available"
-		fi
-	fi
-
-	# Pushbullet notifications removed; keep SMS-only behavior.
-}
-
 connect_hilink()
 {
 	connect_ethernet

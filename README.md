@@ -61,22 +61,14 @@ disco/uavpal/conf/apn
 
 Some generic Ethernet modems manage APN internally. In that case, configure the APN in the modem web UI or modem AT settings before using it with the Disco.
 
-4. Optional: set a phone number for SMS status messages when the modem supports SMS:
-
-```text
-disco/uavpal/conf/phonenumber
-```
-
-Leave the default placeholder if you do not want SMS.
-
-5. If installing the Skycontroller 2 side, set the hotspot Wi-Fi details it should use:
+4. If installing the Skycontroller 2 side, set the hotspot Wi-Fi details it should use:
 
 ```text
 skycontroller2/uavpal/conf/ssid
 skycontroller2/uavpal/conf/wpa
 ```
 
-6. Put the modem into the mode you want before flight testing.
+5. Put the modem into the mode you want before flight testing.
 
 - HiLink-style Huawei modems should already expose an Ethernet-style modem interface.
 - Inseego USB8L should be configured from its web UI. IP Passthrough/IPPT is recommended when available.
