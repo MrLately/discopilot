@@ -43,6 +43,52 @@ Layout:
 - `disco/uavpal/` is the canonical plane-side package source.
 - `skycontroller2/uavpal/` is the canonical Skycontroller 2 package source.
 
+Before install:
+
+1. Edit the config files before transferring the package to the Disco.
+2. Set the same ZeroTier network ID in both files:
+
+```text
+disco/uavpal/conf/zt_networkid
+skycontroller2/uavpal/conf/zt_networkid
+```
+
+3. Set your carrier APN if your modem path uses the package APN setting:
+
+```text
+disco/uavpal/conf/apn
+```
+
+Some generic Ethernet modems manage APN internally. In that case, configure the APN in the modem web UI or modem AT settings before using it with the Disco.
+
+4. Optional: set a phone number for SMS status messages when the modem supports SMS:
+
+```text
+disco/uavpal/conf/phonenumber
+```
+
+Leave the default placeholder if you do not want SMS.
+
+5. If installing the Skycontroller 2 side, set the hotspot Wi-Fi details it should use:
+
+```text
+skycontroller2/uavpal/conf/ssid
+skycontroller2/uavpal/conf/wpa
+```
+
+6. Put the modem into the mode you want before flight testing.
+
+- HiLink-style Huawei modems should already expose an Ethernet-style modem interface.
+- Inseego USB8L should be configured from its web UI. IP Passthrough/IPPT is recommended when available.
+- Quectel RM520N/RM502-style modems should be set to ECM mode before use:
+
+```text
+AT+QCFG="usbnet",1
+AT+CFUN=1,1
+```
+
+Run modem mode changes only on the bench, not during flight.
+
 Plane package scripts:
 
 - `disco/uavpal/discopilot_disco_install.sh` is the tested fresh plane install script.
@@ -187,7 +233,7 @@ disco/uavpal/conf/apn
 
 Optional Quectel bench check:
 
-- `disco/uavpal/bin/uavpal_quectel_ecm.sh` is a manual bench tool for the Quectel RM520N in ECM mode.
+- `disco/uavpal/bin/uavpal_quectel_ecm.sh` is a manual bench tool for Quectel ECM modems.
 - `check` is read-only and prints USB mode, APN/CID state, QMAP state, carrier aggregation, temperatures, route, and ZeroTier state.
 - `provision` is bench-only and points QMAP rule 0 at the configured `conf/apn` CID when that APN exists. It does not force bands, lock RAT, or change SIM credentials.
 

@@ -1,0 +1,24 @@
+* text=auto
+
+# Plane/SC2 scripts must stay BusyBox-friendly LF.
+.gitattributes text eol=lf
+.gitignore text eol=lf
+*.sh text eol=lf
+*.conf text eol=lf
+*.rules text eol=lf
+*.txt text eol=lf
+**/conf/* text eol=lf
+**/version* text eol=lf
+README.md text eol=lf
+
+# Deployed binaries/libraries must never be line-ending normalized.
+**/bin/adb binary
+**/bin/chat binary
+**/bin/curl binary
+**/bin/dc binary
+**/bin/pppd binary
+**/bin/usb_modeswitch binary
+**/bin/zerotier-one binary
+*.ko binary
+*.so binary
+*.so.* binary

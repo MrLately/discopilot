@@ -1,0 +1,19 @@
+# Local backups and old workspace staging folders
+/backups/
+/_
+/discopilot-sc2/
+
+# Local logs, captures, and temporary output
+*.log
+*.pcap
+*.pcapng
+*.tmp
+*.bak
+*.orig
+*.swp
+*~
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
