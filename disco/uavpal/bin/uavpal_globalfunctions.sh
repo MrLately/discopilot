@@ -1,7 +1,7 @@
 load_modem_config()
 {
 	MODEM_PROFILE="auto"
-	MODEM_USB_IDS="12d1:* 19d2:* 2c7c:* 1199:* 2dee:* 05c6:* 1bc7:* 413c:*"
+	MODEM_USB_IDS="12d1:* 19d2:* 2c7c:* 1199:* 2dee:* 05c6:* 1bc7:* 413c:* 1410:*"
 	MODEM_ETH_IFACE="auto"
 	MODEM_ETH_IFACE_PREFIXES="eth usb wwan enx"
 	MODEM_PPP_IFACE="ppp0"
