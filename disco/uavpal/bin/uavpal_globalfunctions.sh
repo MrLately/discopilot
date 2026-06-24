@@ -62,7 +62,7 @@ is_quectel_rm520n()
 		quectel_usb_id=$(head -1 /tmp/modem_usb_id | tr -d '\r\n' | tr -d '\n')
 	fi
 	case "$quectel_usb_id" in
-	2c7c:0801)
+	2c7c:*)
 		return 0
 		;;
 	*)
@@ -75,6 +75,18 @@ quectel_bind_option_driver()
 {
 	is_quectel_rm520n || return 1
 	echo "quectel_rm520n" >/tmp/modem_provider
+	quectel_bind_usb_id="$matched_usb_id"
+	quectel_bind_vendor="$matched_usb_vendor"
+	quectel_bind_product="$matched_usb_product"
+	if [ -z "$quectel_bind_usb_id" ] && [ -f /tmp/modem_usb_id ]; then
+		quectel_bind_usb_id=$(head -1 /tmp/modem_usb_id | tr -d '\r\n' | tr -d '\n')
+	fi
+	if [ -z "$quectel_bind_vendor" ] && [ -n "$quectel_bind_usb_id" ]; then
+		quectel_bind_vendor=$(echo "$quectel_bind_usb_id" | cut -d ':' -f 1)
+	fi
+	if [ -z "$quectel_bind_product" ] && [ -n "$quectel_bind_usb_id" ]; then
+		quectel_bind_product=$(echo "$quectel_bind_usb_id" | cut -d ':' -f 2)
+	fi
 
 	if ls /dev/ttyUSB* >/dev/null 2>&1; then
 		return 0
@@ -82,8 +94,10 @@ quectel_bind_option_driver()
 
 	if [ -w /sys/bus/usb-serial/drivers/option1/new_id ]; then
 		ulogger -s -t uavpal_quectel "... binding Quectel RM520N serial interfaces to option driver"
-		echo "2c7c 0801" >/sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
-		sleep 2
+		if [ -n "$quectel_bind_vendor" ] && [ -n "$quectel_bind_product" ]; then
+			echo "${quectel_bind_vendor} ${quectel_bind_product}" >/sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
+			sleep 2
+		fi
 	fi
 
 	if ls /dev/ttyUSB* >/dev/null 2>&1; then
