@@ -810,8 +810,8 @@ if [ -n "$matched_usb_id" ]; then
 	echo "${matched_usb_desc}" >/tmp/modem_usb_desc
 fi
 
-if is_quectel_rm520n; then
-	echo "quectel_rm520n" >/tmp/modem_provider
+if is_quectel_ecm_modem; then
+	echo "quectel_ecm" >/tmp/modem_provider
 	quectel_bind_option_driver >/dev/null 2>&1
 	if ! quectel_require_ecm; then
 		cleanup_startup_failure
@@ -867,7 +867,7 @@ do
 			fi
 			connection_profile="generic_ethernet"
 			rm -f /tmp/hilink_router_ip /tmp/hilink_login_required
-			if ! is_quectel_rm520n; then
+			if ! is_quectel_ecm_modem; then
 				rm -f /tmp/serial_ctrl_dev
 			fi
 			firewall ${cdc_if}
@@ -945,7 +945,7 @@ do
 			ulogger -s -t uavpal_drone "... detected generic USB Ethernet modem (no Hi-Link API)"
 			connection_profile="generic_ethernet"
 			rm -f /tmp/hilink_router_ip /tmp/hilink_login_required
-			if ! is_quectel_rm520n; then
+			if ! is_quectel_ecm_modem; then
 				rm -f /tmp/serial_ctrl_dev
 			fi
 			firewall ${cdc_if}

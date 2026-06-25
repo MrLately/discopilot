@@ -117,6 +117,28 @@ trim_text()
 	echo "$1" | sed 's/^ *//; s/ *$//'
 }
 
+quectel_model_from_gmm()
+{
+	echo "$1" | tr -d '\r' | awk '
+	/^AT\+GMM/ { next }
+	/^\+GMM:/ {
+		sub(/^\+GMM:[[:space:]]*/, "", $0)
+		gsub(/"/, "", $0)
+		gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+		print
+		exit
+	}
+	/^OK$/ { next }
+	/^ERROR$/ { next }
+	/^[[:space:]]*$/ { next }
+	/^\+/ { next }
+	{
+		gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+		print
+		exit
+	}'
+}
+
 quectel_metric_field()
 {
 	metric_line="$1"
@@ -208,7 +230,8 @@ usb8_write_diag()
 quectel_write_diag()
 {
 	{
-		echo "provider=quectel_rm520n"
+		echo "provider=quectel_ecm"
+		echo "model=${quectel_model}"
 		echo "usbnet_mode=${quectel_usbnet_mode_value}"
 		echo "network=${quectel_network}"
 		echo "technology=${quectel_technology}"
@@ -385,25 +408,26 @@ do
 			fi
 		fi
 
-		# 2) Quectel RM520N AT diagnostics for the ECM/generic Ethernet path.
+		# 2) Quectel ECM AT diagnostics for the generic Ethernet path.
 		quectel_marker=""
 		if [ -f /tmp/modem_provider ]; then
 			quectel_marker=$(head -1 /tmp/modem_provider | tr -d '\r\n' | tr -d '\n')
 		fi
 		if [ -z "$quectel_marker" ] && [ -f /tmp/modem_usb_id ]; then
 			case "$(head -1 /tmp/modem_usb_id | tr -d '\r\n' | tr -d '\n')" in
-			2c7c:0801)
-				quectel_marker="quectel_rm520n"
+			2c7c:*)
+				quectel_marker="quectel_ecm"
 				;;
 			*)
 				;;
 			esac
 		fi
-		if [ "$at_only_profile" -ne "1" ] && [ "$modem_profile" = "generic_ethernet" ] && [ "$quectel_marker" = "quectel_rm520n" ] && { [ -z "$telemetry_signal_provider" ] || [ "$telemetry_signal_provider" = "quectel" ]; }; then
+		if [ "$at_only_profile" -ne "1" ] && [ "$modem_profile" = "generic_ethernet" ] && [ "$quectel_marker" = "quectel_ecm" ] && { [ -z "$telemetry_signal_provider" ] || [ "$telemetry_signal_provider" = "quectel" ]; }; then
 			telemetry_signal_provider="quectel"
 			quectel_ts=$(date +%s)
 			quectel_diag_ts=$(json_number "$(kv_read_line /tmp/uavpal_quectel_diag ts)")
 
+			quectel_model=$(kv_read_line /tmp/uavpal_quectel_diag model)
 			quectel_usbnet_mode_value=$(kv_read_line /tmp/uavpal_quectel_diag usbnet_mode)
 			quectel_network=$(kv_read_line /tmp/uavpal_quectel_diag network)
 			quectel_technology=$(kv_read_line /tmp/uavpal_quectel_diag technology)
@@ -446,6 +470,8 @@ do
 			fi
 			if [ "$quectel_diag_refresh" -eq "1" ]; then
 				quectel_usbnet_mode_value=$(quectel_usbnet_mode)
+				quectel_gmm=$(at_command "AT+GMM" "OK" "2")
+				quectel_model=$(quectel_model_from_gmm "$quectel_gmm")
 				quectel_qnwinfo=$(at_command "AT+QNWINFO" "OK" "2")
 				quectel_qeng=$(at_command 'AT+QENG="servingcell"' "OK" "2")
 				quectel_cgdcont=$(at_command "AT+CGDCONT?" "OK" "2")
@@ -1033,6 +1059,7 @@ do
 	telemetry_ts=$(date +%s)
 
 	modem_provider=""
+	modem_model=""
 	modem_signal_bars="null"
 	modem_signal_pct_source=""
 	modem_rsrp_dbm="null"
@@ -1072,8 +1099,9 @@ do
 	modem_setup_error=""
 	quectel_diag_ts=$(json_number "$(kv_read_line /tmp/uavpal_quectel_diag ts)")
 	if [ "$modem_profile" = "generic_ethernet" ] && [ "$quectel_diag_ts" != "null" ] && [ $((telemetry_ts - quectel_diag_ts)) -le 60 ]; then
-		if [ "$(kv_read_line /tmp/uavpal_quectel_diag provider)" = "quectel_rm520n" ]; then
-			modem_provider="quectel_rm520n"
+		if [ "$(kv_read_line /tmp/uavpal_quectel_diag provider)" = "quectel_ecm" ]; then
+			modem_provider="quectel_ecm"
+			modem_model=$(kv_read_line /tmp/uavpal_quectel_diag model)
 			modem_signal_pct_source="quectel_at"
 			modem_usbnet_mode=$(json_number "$(kv_read_line /tmp/uavpal_quectel_diag usbnet_mode)")
 			modem_rsrp_dbm=$(json_signed_number "$(kv_read_line /tmp/uavpal_quectel_diag rsrp_dbm)")
@@ -1129,6 +1157,7 @@ do
 		fi
 	fi
 	modem_provider_escaped=$(json_escape "$modem_provider")
+	modem_model_escaped=$(json_escape "$modem_model")
 	modem_signal_pct_source_escaped=$(json_escape "$modem_signal_pct_source")
 	modem_band_escaped=$(json_escape "$modem_band")
 	modem_network_escaped=$(json_escape "$modem_network")
@@ -1146,7 +1175,7 @@ do
 	modem_setup_error_escaped=$(json_escape "$modem_setup_error")
 
 	cat > /tmp/uavpal_telemetry.json.tmp <<EOF
-{"schema":1,"modem_signal_pct":${telemetry_modem_signal_pct},"modem_provider":"${modem_provider_escaped}","modem_signal_bars":${modem_signal_bars},"modem_signal_pct_source":"${modem_signal_pct_source_escaped}","modem_rsrp_dbm":${modem_rsrp_dbm},"modem_rsrq_db":${modem_rsrq_db},"modem_snr_db":${modem_snr_db},"modem_band":"${modem_band_escaped}","modem_network":"${modem_network_escaped}","modem_technology":"${modem_technology_escaped}","modem_rat":"${modem_rat_escaped}","modem_lte_band":"${modem_lte_band_escaped}","modem_nr_band":"${modem_nr_band_escaped}","modem_lte_rsrp_dbm":${modem_lte_rsrp_dbm},"modem_lte_rsrq_db":${modem_lte_rsrq_db},"modem_lte_snr_db":${modem_lte_snr_db},"modem_nr_rsrp_dbm":${modem_nr_rsrp_dbm},"modem_nr_rsrq_db":${modem_nr_rsrq_db},"modem_nr_snr_db":${modem_nr_snr_db},"modem_apn":"${modem_apn_escaped}","modem_active_apn":"${modem_active_apn_escaped}","modem_expected_apn":"${modem_expected_apn_escaped}","modem_active_cid":${modem_active_cid},"modem_expected_apn_cid":${modem_expected_apn_cid},"modem_expected_apn_has_ipv4":${modem_expected_apn_has_ipv4},"modem_connection_duration_sec":${modem_connection_duration_sec},"modem_ippt":${modem_ippt},"modem_mtu":${modem_mtu},"modem_usbnet_mode":${modem_usbnet_mode},"modem_qmap_ippt_nat":${modem_qmap_ippt_nat},"modem_qmap_rule0_cid":${modem_qmap_rule0_cid},"modem_qmap_rule0_enabled":${modem_qmap_rule0_enabled},"modem_qmap_status0_cid":${modem_qmap_status0_cid},"modem_qmap_status0_active":${modem_qmap_status0_active},"modem_qmap_expected":"${modem_qmap_expected_escaped}","modem_qmap_mpdn_rule":"${modem_qmap_mpdn_rule_escaped}","modem_qmap_mpdn_status":"${modem_qmap_mpdn_status_escaped}","modem_setup_error":"${modem_setup_error_escaped}","modem_management_ip":"${modem_management_ip_escaped}","plane_battery_pct":${telemetry_plane_battery_pct},"mode":"${telemetry_mode_escaped}","profile":"${telemetry_profile_escaped}","iface":"${telemetry_iface_escaped}","gateway":"${telemetry_gateway_escaped}","zt":"${telemetry_zt_escaped}","zt_mode":"${telemetry_zt_escaped}","zt_state":"${telemetry_zt_state_escaped}","zt_ip":"${telemetry_zt_ip_escaped}","iface_rx_bytes":${iface_rx_bytes},"iface_tx_bytes":${iface_tx_bytes},"loop_ok":true,"telnetd":${telnetd_running},"queue_ok":${queue_ok},"route_ok":${route_ok},"reconnect_handler":"${telemetry_reconnect_handler_escaped}","reconnect_state":"${telemetry_reconnect_state_escaped}","reconnect_fail_count":${reconnect_fail_count},"reconnect_backoff_sec":${reconnect_backoff_sec},"reconnect_link_ok":${reconnect_link_ok},"reconnect_internet_ok":${reconnect_internet_ok},"ts":${telemetry_ts}}
+{"schema":1,"modem_signal_pct":${telemetry_modem_signal_pct},"modem_provider":"${modem_provider_escaped}","modem_model":"${modem_model_escaped}","modem_signal_bars":${modem_signal_bars},"modem_signal_pct_source":"${modem_signal_pct_source_escaped}","modem_rsrp_dbm":${modem_rsrp_dbm},"modem_rsrq_db":${modem_rsrq_db},"modem_snr_db":${modem_snr_db},"modem_band":"${modem_band_escaped}","modem_network":"${modem_network_escaped}","modem_technology":"${modem_technology_escaped}","modem_rat":"${modem_rat_escaped}","modem_lte_band":"${modem_lte_band_escaped}","modem_nr_band":"${modem_nr_band_escaped}","modem_lte_rsrp_dbm":${modem_lte_rsrp_dbm},"modem_lte_rsrq_db":${modem_lte_rsrq_db},"modem_lte_snr_db":${modem_lte_snr_db},"modem_nr_rsrp_dbm":${modem_nr_rsrp_dbm},"modem_nr_rsrq_db":${modem_nr_rsrq_db},"modem_nr_snr_db":${modem_nr_snr_db},"modem_apn":"${modem_apn_escaped}","modem_active_apn":"${modem_active_apn_escaped}","modem_expected_apn":"${modem_expected_apn_escaped}","modem_active_cid":${modem_active_cid},"modem_expected_apn_cid":${modem_expected_apn_cid},"modem_expected_apn_has_ipv4":${modem_expected_apn_has_ipv4},"modem_connection_duration_sec":${modem_connection_duration_sec},"modem_ippt":${modem_ippt},"modem_mtu":${modem_mtu},"modem_usbnet_mode":${modem_usbnet_mode},"modem_qmap_ippt_nat":${modem_qmap_ippt_nat},"modem_qmap_rule0_cid":${modem_qmap_rule0_cid},"modem_qmap_rule0_enabled":${modem_qmap_rule0_enabled},"modem_qmap_status0_cid":${modem_qmap_status0_cid},"modem_qmap_status0_active":${modem_qmap_status0_active},"modem_qmap_expected":"${modem_qmap_expected_escaped}","modem_qmap_mpdn_rule":"${modem_qmap_mpdn_rule_escaped}","modem_qmap_mpdn_status":"${modem_qmap_mpdn_status_escaped}","modem_setup_error":"${modem_setup_error_escaped}","modem_management_ip":"${modem_management_ip_escaped}","plane_battery_pct":${telemetry_plane_battery_pct},"mode":"${telemetry_mode_escaped}","profile":"${telemetry_profile_escaped}","iface":"${telemetry_iface_escaped}","gateway":"${telemetry_gateway_escaped}","zt":"${telemetry_zt_escaped}","zt_mode":"${telemetry_zt_escaped}","zt_state":"${telemetry_zt_state_escaped}","zt_ip":"${telemetry_zt_ip_escaped}","iface_rx_bytes":${iface_rx_bytes},"iface_tx_bytes":${iface_tx_bytes},"loop_ok":true,"telnetd":${telnetd_running},"queue_ok":${queue_ok},"route_ok":${route_ok},"reconnect_handler":"${telemetry_reconnect_handler_escaped}","reconnect_state":"${telemetry_reconnect_state_escaped}","reconnect_fail_count":${reconnect_fail_count},"reconnect_backoff_sec":${reconnect_backoff_sec},"reconnect_link_ok":${reconnect_link_ok},"reconnect_internet_ok":${reconnect_internet_ok},"ts":${telemetry_ts}}
 EOF
 	mv /tmp/uavpal_telemetry.json.tmp /tmp/uavpal_telemetry.json
 

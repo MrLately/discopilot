@@ -55,7 +55,7 @@ EOF
 	return 1
 }
 
-is_quectel_rm520n()
+is_quectel_ecm_modem()
 {
 	quectel_usb_id="$matched_usb_id"
 	if [ -z "$quectel_usb_id" ] && [ -f /tmp/modem_usb_id ]; then
@@ -73,8 +73,8 @@ is_quectel_rm520n()
 
 quectel_bind_option_driver()
 {
-	is_quectel_rm520n || return 1
-	echo "quectel_rm520n" >/tmp/modem_provider
+	is_quectel_ecm_modem || return 1
+	echo "quectel_ecm" >/tmp/modem_provider
 	quectel_bind_usb_id="$matched_usb_id"
 	quectel_bind_vendor="$matched_usb_vendor"
 	quectel_bind_product="$matched_usb_product"
@@ -93,7 +93,7 @@ quectel_bind_option_driver()
 	fi
 
 	if [ -w /sys/bus/usb-serial/drivers/option1/new_id ]; then
-		ulogger -s -t uavpal_quectel "... binding Quectel RM520N serial interfaces to option driver"
+		ulogger -s -t uavpal_quectel "... binding Quectel ECM serial interfaces to option driver"
 		if [ -n "$quectel_bind_vendor" ] && [ -n "$quectel_bind_product" ]; then
 			echo "${quectel_bind_vendor} ${quectel_bind_product}" >/sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
 			sleep 2
@@ -636,13 +636,13 @@ probe_serial_ctrl_dev()
 		probe_timeout="1"
 	fi
 
-	if is_quectel_rm520n; then
+	if is_quectel_ecm_modem; then
 		quectel_bind_option_driver >/dev/null 2>&1
 		if [ -c /dev/ttyUSB2 ]; then
 			probe_result=$(at_command_on_dev "ttyUSB2" "AT" "OK" "$probe_timeout")
 			if [ "$?" -eq "0" ] && echo "$probe_result" | grep -q "OK"; then
 				if [ "$serial_ctrl_dev" != "ttyUSB2" ]; then
-					ulogger -s -t uavpal_at_command "... using ttyUSB2 as Quectel RM520N control interface"
+					ulogger -s -t uavpal_at_command "... using ttyUSB2 as Quectel ECM control interface"
 				fi
 				serial_ctrl_dev="ttyUSB2"
 				echo "$serial_ctrl_dev" >/tmp/serial_ctrl_dev
@@ -744,7 +744,7 @@ at_command()
 
 quectel_usbnet_mode()
 {
-	is_quectel_rm520n || return 1
+	is_quectel_ecm_modem || return 1
 	quectel_bind_option_driver >/dev/null 2>&1
 	serial_ctrl_dev=""
 	probe_serial_ctrl_dev "2" >/dev/null 2>&1
@@ -895,8 +895,8 @@ quectel_qmap_status_active()
 
 quectel_require_ecm()
 {
-	is_quectel_rm520n || return 0
-	echo "quectel_rm520n" >/tmp/modem_provider
+	is_quectel_ecm_modem || return 0
+	echo "quectel_ecm" >/tmp/modem_provider
 
 	quectel_mode=""
 	for quectel_wait in $(seq 1 10); do
@@ -909,8 +909,8 @@ quectel_require_ecm()
 
 	quectel_ts=$(date +%s)
 	if [ "$quectel_mode" = "1" ]; then
-		echo "provider=quectel_rm520n usbnet_mode=1 ecm_ok=1 error= ts=${quectel_ts}" >/tmp/uavpal_quectel_setup_diag
-		ulogger -s -t uavpal_quectel "... RM520N detected in ECM usbnet=1"
+		echo "provider=quectel_ecm usbnet_mode=1 ecm_ok=1 error= ts=${quectel_ts}" >/tmp/uavpal_quectel_setup_diag
+		ulogger -s -t uavpal_quectel "... Quectel ECM modem detected in usbnet=1"
 		return 0
 	fi
 
@@ -918,17 +918,17 @@ quectel_require_ecm()
 		detect_cdc_iface
 		if [ "$?" -eq "0" ] && [ "$cdc_if" = "usb0" ]; then
 			quectel_error="quectel_usbnet_unknown_data_iface_present"
-			echo "provider=quectel_rm520n usbnet_mode= ecm_ok=1 error=${quectel_error} ts=${quectel_ts}" >/tmp/uavpal_quectel_setup_diag
-			ulogger -s -t uavpal_quectel "... RM520N usbnet mode not ready over AT, but usb0 is present; continuing generic Ethernet startup"
+			echo "provider=quectel_ecm usbnet_mode= ecm_ok=1 error=${quectel_error} ts=${quectel_ts}" >/tmp/uavpal_quectel_setup_diag
+			ulogger -s -t uavpal_quectel "... Quectel ECM usbnet mode not ready over AT, but usb0 is present; continuing generic Ethernet startup"
 			return 0
 		fi
 		quectel_error="quectel_usbnet_unknown"
-		ulogger -s -t uavpal_quectel "... RM520N detected but usbnet mode could not be verified"
+		ulogger -s -t uavpal_quectel "... Quectel ECM modem detected but usbnet mode could not be verified"
 	else
 		quectel_error="quectel_usbnet_not_ecm"
-		ulogger -s -t uavpal_quectel "... RM520N usbnet=${quectel_mode}; ECM usbnet=1 is required"
+		ulogger -s -t uavpal_quectel "... Quectel ECM modem usbnet=${quectel_mode}; ECM usbnet=1 is required"
 	fi
-	echo "provider=quectel_rm520n usbnet_mode=${quectel_mode} ecm_ok=0 error=${quectel_error} ts=${quectel_ts}" >/tmp/uavpal_quectel_setup_diag
+	echo "provider=quectel_ecm usbnet_mode=${quectel_mode} ecm_ok=0 error=${quectel_error} ts=${quectel_ts}" >/tmp/uavpal_quectel_setup_diag
 	return 1
 }
 

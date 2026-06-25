@@ -72,7 +72,7 @@ skycontroller2/uavpal/conf/wpa
 
 - HiLink-style Huawei modems should already expose an Ethernet-style modem interface.
 - Inseego USB8L should be configured from its web UI. IP Passthrough/IPPT is recommended when available.
-- Quectel RM520N/RM502-style modems should be set to ECM mode before use:
+- Quectel ECM modems should be set to ECM mode before use:
 
 ```text
 AT+QCFG="usbnet",1
@@ -196,7 +196,7 @@ USB8L notes:
 
 Quectel ECM notes:
 
-- Quectel RM520N/RM502-style modems should be placed in ECM mode before use.
+- Quectel ECM modems should be placed in ECM mode before use.
 - The expected Quectel ECM mode is:
 
 ```sh
@@ -210,6 +210,7 @@ AT+CFUN=1,1
 ```
 
 - Run AT mode changes only on the bench, not during flight.
+- RM520N has been tested. RM502Q-AE is expected to work if it exposes ECM and enumerates as a Quectel `2c7c:*` USB device.
 - Other Quectel ECM modems may work if they expose a supported Ethernet interface and their USB ID is included in the modem detection list.
 
 APN and carrier setup:
